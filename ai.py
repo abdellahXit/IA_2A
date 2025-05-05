@@ -457,10 +457,15 @@ def smooth_decision(current_action, new_action, game_obj, walls, width):
             # Check if there's an immediate danger in the current direction
             for enemy in enemy_group:
                 enemy_pos = tuple(position(enemy))
-                if not enemy.frightened and _manhattan_distance(next_pos, enemy_pos, width) < 2:
+                if not enemy.frightened and _manhattan_distance(next_pos, enemy_pos, width) < 3:
                     # Danger ahead! Allow the direction change
                     return new_action
-            
+            # Check if there's an immediate danger in the current direction
+            for enemy in enemy_group:
+                enemy_pos = tuple(position(enemy))
+                if  enemy.frightened and _manhattan_distance(next_pos, enemy_pos, width) < 3:
+                    # Danger ahead! Allow the direction change
+                    return new_action
             # No immediate danger, stick with current direction to avoid oscillation
             return current_action
     
