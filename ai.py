@@ -1,4 +1,5 @@
 import math
+import random
 from collections import deque
 from global_names import *
 from tools import *
@@ -7,6 +8,12 @@ from tools import *
 DEPTH = 4
 DIRS = (RIGHT, LEFT, DOWN, UP)
 VECT = {RIGHT: (1, 0), LEFT: (-1, 0), DOWN: (0, 1), UP: (0, -1)}
+
+# Simple global variables for tracking visited positions
+# This is a simplified approach that's easier to debug
+visited_positions = {}  # Dictionary to track visited positions
+last_positions = []     # List to track recent positions
+MAX_RECENT = 10         # Maximum number of recent positions to track
 
 # Cache level information for performance
 _level_cache = {}
@@ -40,7 +47,7 @@ def _advance(pos, key, width):
     x, y = pos
     return ((x + dx) % width, y + dy)
 
-# Improved ghost movement prediction
+# Ghost movement prediction
 def next_ghost_move(ghost_pos, target_pos, walls, width, forbidden_dir=None):
     moves = _legal_moves(ghost_pos, walls, width)
     
@@ -60,14 +67,11 @@ def next_ghost_move(ghost_pos, target_pos, walls, width, forbidden_dir=None):
     return best_move
 
 def blinky_move(ghost_pos, ghost_state, pacman_pos, walls, width, last_dir=None):
-    """Blinky directly targets Pac-Man"""
     if ghost_state[1]:  # If frightened
-        # Run away from Pac-Man in scatter mode
         return next_ghost_move(ghost_pos, (26, -3), walls, width, forbidden_dir=opposite_keys.get(last_dir))
     return next_ghost_move(ghost_pos, pacman_pos, walls, width, forbidden_dir=opposite_keys.get(last_dir))
 
 def pinky_move(ghost_pos, ghost_state, pacman_pos, pacman_dir, walls, width, last_dir=None):
-    """Pinky targets 4 tiles ahead of Pac-Man"""
     if ghost_state[1]:  # If frightened
         return next_ghost_move(ghost_pos, (2, -3), walls, width, forbidden_dir=opposite_keys.get(last_dir))
     
@@ -84,7 +88,6 @@ def pinky_move(ghost_pos, ghost_state, pacman_pos, pacman_dir, walls, width, las
     return next_ghost_move(ghost_pos, target, walls, width, forbidden_dir=opposite_keys.get(last_dir))
 
 def inky_move(ghost_pos, ghost_state, pacman_pos, pacman_dir, blinky_pos, walls, width, last_dir=None):
-    """Inky uses both Pac-Man and Blinky's positions"""
     if ghost_state[1]:  # If frightened
         return next_ghost_move(ghost_pos, (27, 34), walls, width, forbidden_dir=opposite_keys.get(last_dir))
     
@@ -106,7 +109,6 @@ def inky_move(ghost_pos, ghost_state, pacman_pos, pacman_dir, blinky_pos, walls,
     return next_ghost_move(ghost_pos, target, walls, width, forbidden_dir=opposite_keys.get(last_dir))
 
 def clyde_move(ghost_pos, ghost_state, pacman_pos, walls, width, last_dir=None):
-    """Clyde targets Pac-Man when far, runs away when close"""
     if ghost_state[1]:  # If frightened
         return next_ghost_move(ghost_pos, (0, 34), walls, width, forbidden_dir=opposite_keys.get(last_dir))
     
@@ -118,7 +120,7 @@ def clyde_move(ghost_pos, ghost_state, pacman_pos, walls, width, last_dir=None):
     
     return next_ghost_move(ghost_pos, target, walls, width, forbidden_dir=opposite_keys.get(last_dir))
 
-# Improved collision detection
+# Collision detection
 def check_rect_collision(pos1, type1, pos2, type2):
     rect_getters = {
         'pacman': pacman_rect,
@@ -164,7 +166,7 @@ def energizer_rect(pos):
         CELL_SIZE // 2, CELL_SIZE // 2
     )
 
-# Improved game state update function
+# Game state update function
 def update_game(pacman, alive, enemy_group, ghosts_status, foods_group, energizers_group, width):
     pac_pos = pacman  # tuple (x, y)
     
@@ -204,7 +206,7 @@ def update_game(pacman, alive, enemy_group, ghosts_status, foods_group, energize
     
     return pacman, alive, enemy_group, ghosts_status, new_foods, new_energizers
 
-# Improved alpha-beta search
+# Alpha-beta search
 def alpha_beta(state, depth, alpha, beta, maximizing_player, width, walls):
     pacman, alive, direction, ghosts, ghosts_status, ghosts_names, foods, energizers = state
     
@@ -331,7 +333,7 @@ def alpha_beta(state, depth, alpha, beta, maximizing_player, width, walls):
         
         return min_eval, None
 
-# Improved evaluation function
+# Evaluation function with anti-looping penalties
 def evaluate_game(state, width, walls):
     pacman, alive, direction, ghosts, ghosts_status, ghosts_names, foods, energizers = state
     
@@ -405,14 +407,50 @@ def evaluate_game(state, width, walls):
             # Give a small bonus for continuing in the same direction
             score += 100
     
+    # Anti-looping penalty: penalize positions that have been visited frequently
+    pos_key = f"{pacman[0]},{pacman[1]}"
+    if pos_key in visited_positions:
+        visit_count = visited_positions[pos_key]
+        # Apply a stronger penalty for frequently visited positions
+        score -= visit_count * 200
+    
     return score
+
+# Function to detect if we're in a loop
+def is_in_loop(positions, current_pos):
+    """Check if we're in a loop by looking at recent positions"""
+    if len(positions) < 6:  # Need enough history to detect loops
+        return False
+    
+    # Check for simple back-and-forth pattern
+    if len(positions) >= 4:
+        if positions[-1] == positions[-3] and positions[-2] == positions[-4]:
+            return True
+    
+    # Check for position that appears multiple times in recent history
+    pos_count = positions.count(current_pos)
+    if pos_count >= 3:  # Position appears 3+ times in recent history
+        return True
+    
+    return False
 
 # Main function to determine Pac-Man's next move
 def next_move(game_obj, game_parameters, enemy_group, foods_group, energizers_group):
+    global visited_positions, last_positions
+    
     # Get current game state
     pacman = tuple(position(game_obj['Pac-Man']))
     alive = True
     direction = game_obj['Pac-Man'].action
+    
+    # Update position tracking
+    pos_key = f"{pacman[0]},{pacman[1]}"
+    visited_positions[pos_key] = visited_positions.get(pos_key, 0) + 1
+    
+    # Update recent positions list
+    last_positions.append(pacman)
+    if len(last_positions) > MAX_RECENT:
+        last_positions.pop(0)
     
     # Get ghost information
     ghosts = [tuple(position(enemy)) for enemy in enemy_group]
@@ -430,6 +468,38 @@ def next_move(game_obj, game_parameters, enemy_group, foods_group, energizers_gr
     # Create initial state
     state = (pacman, alive, direction, ghosts, ghosts_status, ghosts_names, foods, energizers)
     
+    # Check if we're in a loop
+    in_loop = is_in_loop(last_positions, pacman)
+    
+    # If we're in a loop, try to break out of it
+    if in_loop:
+        print("LOOP DETECTED! Breaking out...")
+        # Get all legal moves
+        legal_moves = _legal_moves(pacman, walls, width)
+        
+        if len(legal_moves) > 1:
+            # Try to find a move that leads to a less visited position
+            best_move = None
+            min_visits = float('inf')
+            
+            for move in legal_moves:
+                next_pos = _advance(pacman, move, width)
+                next_key = f"{next_pos[0]},{next_pos[1]}"
+                visits = visited_positions.get(next_key, 0)
+                
+                if visits < min_visits:
+                    min_visits = visits
+                    best_move = move
+            
+            if best_move is not None:
+                return best_move
+            
+            # If all positions are equally visited, choose a random move
+            # that's different from the current direction
+            alternative_moves = [m for m in legal_moves if m != direction]
+            if alternative_moves:
+                return random.choice(alternative_moves)
+    
     # Run alpha-beta search
     score, action = alpha_beta(state, DEPTH, float('-inf'), float('inf'), True, width, walls)
     
@@ -439,34 +509,9 @@ def next_move(game_obj, game_parameters, enemy_group, foods_group, energizers_gr
         if legal_moves:
             action = legal_moves[0]
     
-    # Apply smoothing to prevent oscillation
-    current_action = direction
-    action = smooth_decision(current_action, action, game_obj, walls, width)
+    # Periodically clean up the visited positions dictionary to prevent memory issues
+    if len(visited_positions) > 200:
+        # Keep only positions with high visit counts
+        visited_positions = {k: v for k, v in visited_positions.items() if v > 2}
     
     return action
-
-def smooth_decision(current_action, new_action, game_obj, walls, width):
-    """Apply smoothing to prevent oscillation in Pac-Man's movement"""
-    # If the new action is the opposite of the current one, we need to check if it's really necessary
-    if new_action == opposite_keys.get(current_action):
-        pacman_pos = tuple(position(game_obj['Pac-Man']))
-        
-        # Check if continuing in the current direction is dangerous
-        next_pos = _advance(pacman_pos, current_action, width)
-        if next_pos not in walls:
-            # Check if there's an immediate danger in the current direction
-            for enemy in enemy_group:
-                enemy_pos = tuple(position(enemy))
-                if not enemy.frightened and _manhattan_distance(next_pos, enemy_pos, width) < 3:
-                    # Danger ahead! Allow the direction change
-                    return new_action
-            # Check if there's an immediate danger in the current direction
-            for enemy in enemy_group:
-                enemy_pos = tuple(position(enemy))
-                if  enemy.frightened and _manhattan_distance(next_pos, enemy_pos, width) < 3:
-                    # Danger ahead! Allow the direction change
-                    return new_action
-            # No immediate danger, stick with current direction to avoid oscillation
-            return current_action
-    
-    return new_action
