@@ -2,6 +2,7 @@ import pygame
 import random
 import sys
 import math
+import os
 from pacman_ai import PacmanAI
 
 # Initialize pygame
@@ -80,6 +81,47 @@ GHOST_CORNERS = {
     "CLYDE": (1, GRID_HEIGHT - 2)   # Bottom-left
 }
 
+# Function to load ghost images
+def load_ghost_images():
+    # Dictionary to store all ghost images
+    ghost_images = {
+        "BLINKY": None,
+        "PINKY": None,
+        "INKY": None,
+        "CLYDE": None,
+        "FRIGHTENED": None,
+        "FRIGHTENED_FLASH": None,
+        "EATEN": None
+    }
+    
+    # Check if the images directory exists
+    if not os.path.exists("images"):
+        # If not, we'll use placeholder colors instead
+        return None
+    
+    try:
+        # Try to load images if they exist
+        ghost_images["BLINKY"] = pygame.image.load("images/blinky.png")
+        ghost_images["PINKY"] = pygame.image.load("images/pinky.png")
+        ghost_images["INKY"] = pygame.image.load("images/inky.png")
+        ghost_images["CLYDE"] = pygame.image.load("images/clyde.png")
+        ghost_images["FRIGHTENED"] = pygame.image.load("images/frightened.png")
+        ghost_images["FRIGHTENED_FLASH"] = pygame.image.load("images/frightened_flash.png")
+        ghost_images["EATEN"] = pygame.image.load("images/eaten.png")
+        
+        # Resize all images to fit the grid
+        for key in ghost_images:
+            if ghost_images[key]:
+                ghost_images[key] = pygame.transform.scale(ghost_images[key], (GRID_SIZE, GRID_SIZE))
+        
+        return ghost_images
+    except (pygame.error, FileNotFoundError):
+        # If any image fails to load, return None to use fallback rendering
+        return None
+
+# Try to load ghost images
+ghost_images = load_ghost_images()
+
 class Pacman:
     def __init__(self):
         self.grid_x = 9
@@ -94,7 +136,7 @@ class Pacman:
         
         # NEW: Add speed control for Pacman
         self.move_counter = 0
-        self.speed = 12 # Pacman moves every 2 frames (slower than original)
+        self.speed = 6 # Pacman moves every 2 frames (slower than original)
         
         # NEW: Track if Pacman has left the ghost home
         self.left_ghost_home = True  # Pacman starts outside the ghost home
@@ -306,13 +348,16 @@ class Ghost:
         
         # Set different speeds for different ghosts (higher = slower)
         if name == "BLINKY":
-            self.speed = 7  # Moves every 3 frames (slower)
+            self.speed = 6  # Moves every 3 frames (slower)
         elif name == "PINKY":
-            self.speed = 8  # Moves every 4 frames
+            self.speed = 6  # Moves every 4 frames
         elif name == "INKY":
-            self.speed = 8  # Moves every 4 frames
+            self.speed = 6  # Moves every 4 frames
         else:  # CLYDE
-            self.speed = 8  # Moves every 5 frames (slowest)
+            self.speed = 6  # Moves every 5 frames (slowest)
+        
+        # For drawing order (z-index)
+        self.draw_priority = 0
         
     def update(self, pacman, ghosts):
         # Increment move counter and check if it's time to move
@@ -350,7 +395,6 @@ class Ghost:
         # Reset counter when it's time to move
         self.move_counter = 0
         
-        # If not currently moving, start moving
         # If not currently moving, start moving
         if not self.moving:
             # NEW: Check if ghost is in home
@@ -417,6 +461,10 @@ class Ghost:
             
         # Stop moving after one step
         self.moving = False
+        
+        # Update draw priority based on position (for proper z-index)
+        self.draw_priority = self.grid_y * 100 + self.grid_x
+        
     def move_in_home(self):
         """Special movement logic for ghosts inside the home"""
         self.moving = True
@@ -478,6 +526,9 @@ class Ghost:
         
         # Stop moving after one step
         self.moving = False
+        
+        # Update draw priority
+        self.draw_priority = self.grid_y * 100 + self.grid_x
     
     def move(self, pacman, ghosts):
         self.moving = True
@@ -501,11 +552,11 @@ class Ghost:
                 self.left_ghost_home = False  # Reset this flag when respawning
                 # Reset speed to normal after respawning
                 if self.name == "BLINKY":
-                    self.speed = 7
+                    self.speed = 6
                 elif self.name == "PINKY" or self.name == "INKY":
-                    self.speed = 8
+                    self.speed = 6
                 else:  # CLYDE
-                    self.speed = 8
+                    self.speed = 6
                 # Choose a random direction to start moving (preferably upward to leave home)
                 valid_dirs = self.get_valid_directions()
                 if "UP" in valid_dirs:
@@ -720,14 +771,14 @@ class Ghost:
             return "LEFT"
         return None
     
-    def set_frightened(self, duration=650):  # 5 seconds at 30 FPS
+    def set_frightened(self, duration=150):  # 5 seconds at 30 FPS
         self.frightened = True
         self.frightened_timer = duration
         self.flashing = False
         self.flash_state = True
         
         # Make ghosts slower when frightened
-        self.speed = 12  # Very slow when frightened
+        self.speed = 10  # Very slow when frightened
         
         # Reverse direction when entering frightened mode
         self.direction = self.get_opposite_direction()
@@ -737,58 +788,75 @@ class Ghost:
         self.frightened = False
         self.flashing = False
         # Eaten ghosts move faster to return to the ghost house
-        self.speed = 4
+        self.speed = 2
     
     def draw(self):
         x = self.grid_x * GRID_SIZE
         y = self.grid_y * GRID_SIZE
         
-        # Choose color based on state
-        color = self.color
-        if self.frightened:
-            if self.flashing:
-                # Flash between blue and white
-                color = BLUE_GHOST if self.flash_state else WHITE
+        # Use images if available, otherwise fall back to shapes
+        if ghost_images:
+            # Choose the appropriate image based on ghost state
+            if self.eaten:
+                image = ghost_images["EATEN"]
+            elif self.frightened:
+                if self.flashing:
+                    image = ghost_images["FRIGHTENED_FLASH"] if self.flash_state else ghost_images["FRIGHTENED"]
+                else:
+                    image = ghost_images["FRIGHTENED"]
             else:
-                color = BLUE_GHOST
-        elif self.eaten:
-            color = WHITE
-        
-        # Draw ghost body as a circle
-        pygame.draw.circle(screen, color, (x + GRID_SIZE//2, y + GRID_SIZE//2), GRID_SIZE//2)
-        
-        # If eaten, don't draw eyes
-        if self.eaten:
-            return
-        
-        # Draw eyes
-        eye_radius = GRID_SIZE // 6
-        left_eye_x = x + GRID_SIZE // 3
-        right_eye_x = x + 2 * GRID_SIZE // 3
-        eye_y = y + GRID_SIZE // 3
-        
-        pygame.draw.circle(screen, WHITE, (left_eye_x, eye_y), eye_radius)
-        pygame.draw.circle(screen, WHITE, (right_eye_x, eye_y), eye_radius)
-        
-        # Draw pupils based on direction (unless frightened)
-        if not self.frightened:
-            pupil_radius = eye_radius // 2
-            left_pupil_x, right_pupil_x = left_eye_x, right_eye_x
-            pupil_y = eye_y
+                image = ghost_images[self.name]
             
-            if self.direction == "LEFT":
-                left_pupil_x -= pupil_radius
-                right_pupil_x -= pupil_radius
-            elif self.direction == "RIGHT":
-                left_pupil_x += pupil_radius
-                right_pupil_x += pupil_radius
-            elif self.direction == "UP":
-                pupil_y -= pupil_radius
-            elif self.direction == "DOWN":
-                pupil_y += pupil_radius
+            # Draw the image
+            screen.blit(image, (x, y))
+        else:
+            # Fallback to shape-based rendering if images aren't available
+            # Choose color based on state
+            color = self.color
+            if self.frightened:
+                if self.flashing:
+                    # Flash between blue and white
+                    color = BLUE_GHOST if self.flash_state else WHITE
+                else:
+                    color = BLUE_GHOST
+            elif self.eaten:
+                color = WHITE
+            
+            # Draw ghost body as a circle
+            pygame.draw.circle(screen, color, (x + GRID_SIZE//2, y + GRID_SIZE//2), GRID_SIZE//2)
+            
+            # If eaten, don't draw eyes
+            if self.eaten:
+                return
+            
+            # Draw eyes
+            eye_radius = GRID_SIZE // 6
+            left_eye_x = x + GRID_SIZE // 3
+            right_eye_x = x + 2 * GRID_SIZE // 3
+            eye_y = y + GRID_SIZE // 3
+            
+            pygame.draw.circle(screen, WHITE, (left_eye_x, eye_y), eye_radius)
+            pygame.draw.circle(screen, WHITE, (right_eye_x, eye_y), eye_radius)
+            
+            # Draw pupils based on direction (unless frightened)
+            if not self.frightened:
+                pupil_radius = eye_radius // 2
+                left_pupil_x, right_pupil_x = left_eye_x, right_eye_x
+                pupil_y = eye_y
                 
-            pygame.draw.circle(screen, BLACK, (left_pupil_x, pupil_y), pupil_radius)
-            pygame.draw.circle(screen, BLACK, (right_pupil_x, pupil_y), pupil_radius)
+                if self.direction == "LEFT":
+                    left_pupil_x -= pupil_radius
+                    right_pupil_x -= pupil_radius
+                elif self.direction == "RIGHT":
+                    left_pupil_x += pupil_radius
+                    right_pupil_x += pupil_radius
+                elif self.direction == "UP":
+                    pupil_y -= pupil_radius
+                elif self.direction == "DOWN":
+                    pupil_y += pupil_radius
+                    
+                pygame.draw.circle(screen, BLACK, (left_pupil_x, pupil_y), pupil_radius)
+                pygame.draw.circle(screen, BLACK, (right_pupil_x, pupil_y), pupil_radius)
 
 def draw_map():
     for y in range(GRID_HEIGHT):
@@ -849,13 +917,13 @@ def reset_positions(pacman, ghosts):
         
         # Reset ghost speeds
         if ghost.name == "BLINKY":
-            ghost.speed = 7
+            ghost.speed = 6
         elif ghost.name == "PINKY" or ghost.name == "INKY":
-            ghost.speed = 8
+            ghost.speed = 6
         else:  # CLYDE
-            ghost.speed = 8
+            ghost.speed = 6
 
-def draw_score(score, lives, remaining_food,ai):
+def draw_score(score, lives, remaining_food, ai):
     font = pygame.font.SysFont(None, 24)
     score_text = font.render(f"Score: {score}", True, WHITE)
     lives_text = font.render(f"Lives: {lives}", True, WHITE)
@@ -865,6 +933,7 @@ def draw_score(score, lives, remaining_food,ai):
     screen.blit(lives_text, (WIDTH - 100, 5))
     screen.blit(food_text, (WIDTH // 2 - 40, 5))
     screen.blit(algo_text, (WIDTH - 100, 220))
+
 def draw_ai_mode(screen, ai):
     """
     Affiche le mode actuel de l'IA en vert sur l'écran.
@@ -887,8 +956,6 @@ def draw_ai_mode(screen, ai):
     # Dessiner le fond et le texte
     pygame.draw.rect(screen, BLACK, background_rect)
     screen.blit(mode_text, text_rect)
-
-# Puis dans la boucle principale:
 
 def main():
     pacman = Pacman()
@@ -1050,12 +1117,15 @@ def main():
         # Draw everything
         draw_map()
         pacman.draw()
-        for ghost in ghosts:
+        
+        # Sort ghosts by draw priority (y-position) to fix superposition issue
+        sorted_ghosts = sorted(ghosts, key=lambda g: g.draw_priority)
+        for ghost in sorted_ghosts:
             ghost.draw()
         
         # Draw score and lives
         remaining_food = sum(row.count(0) for row in game_map) + sum(row.count(3) for row in game_map)
-        draw_score(pacman.score, pacman.lives, remaining_food,pacman_ai)
+        draw_score(pacman.score, pacman.lives, remaining_food, pacman_ai)
         
         # Draw instructions
         screen.blit(instructions, (WIDTH//2 - instructions.get_width()//2, HEIGHT - 30))
