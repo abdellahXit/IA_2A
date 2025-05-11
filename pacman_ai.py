@@ -164,6 +164,8 @@ class PacmanAI:
         # Priorité 3: Nourriture normale
         elif food_positions:
             target_positions = food_positions
+
+
         
         if not target_positions:
             # Aucune cible trouvée, choisir un mouvement qui évite les oscillations
@@ -436,14 +438,8 @@ class PacmanAI:
                 # Ajouter un bonus/pénalité pour la continuité de direction
                 if direction == move:
                     # Bonus pour continuer dans la même direction
-                    score += 50
-                else:
-                    # Pénalité pour changer de direction
-                    score -= self.direction_change_penalty
+                    score += 5
                 
-                # Pénalité pour les oscillations (va-et-vient)
-                if self._is_oscillating(pacman.grid_x, pacman.grid_y, next_x, next_y):
-                    score -= self.oscillation_penalty
             
             # Mettre à jour le meilleur mouvement
             if score > best_score:
@@ -583,9 +579,7 @@ class PacmanAI:
                     eval_score = self._alpha_beta(next_x, next_y, ghost_copies, game_map_copy, ghost_home_coords,
                                                 current_depth + 1, max_depth, alpha, beta, False, last_move, direction, current_ghosts_eaten)
                     
-                    # Ajouter un bonus pour la continuité de direction
-                    if last_move == direction:
-                        eval_score += 50  # Bonus significatif pour maintenir la direction
+
                 
                 max_eval = max(max_eval, eval_score)
                 
@@ -732,114 +726,39 @@ class PacmanAI:
         
         score += ghost_score
         
-        # Bonus significatif pour maintenir la même direction
-        if pac_dir == last_move and pac_dir is not None:
-            score += 50
+
         
-        # Calculer la distance à la nourriture la plus proche
-        min_food_distance = float('inf')
-        closest_food = None
-        
-        for food_x, food_y in foods:
-            distance = self._manhattan_distance(pacman_x, pacman_y, food_x, food_y)
-            if distance < min_food_distance:
-                min_food_distance = distance
-                closest_food = (food_x, food_y)
-        
-        # Bonus pour être proche de la nourriture
-        if closest_food:
-            score += 100 - min_food_distance * 5  # Plus on est proche, plus le bonus est grand
-        
-        # Bonus pour être proche d'un énergisant quand des fantômes sont à proximité
-        if energizers:
-            min_energizer_distance = float('inf')
-            for energizer_x, energizer_y in energizers:
-                distance = self._manhattan_distance(pacman_x, pacman_y, energizer_x, energizer_y)
-                min_energizer_distance = min(min_energizer_distance, distance)
-            
-            # Vérifier si des fantômes sont à proximité
-            ghosts_nearby = False
-            for ghost in ghosts:
-                if not ghost.frightened and not ghost.eaten:
-                    distance = self._manhattan_distance(pacman_x, pacman_y, ghost.grid_x, ghost.grid_y)
-                    if distance < 8:  # Seuil arbitraire
-                        ghosts_nearby = True
-                        break
-            
-            if ghosts_nearby:
-                # Bonus plus important si des fantômes sont à proximité
-                score += 150 - min_energizer_distance * 10
-        
-        # Pénalité pour être proche des fantômes dangereux
-        for ghost in ghosts:
-            if not ghost.frightened and not ghost.eaten:
-                distance = self._manhattan_distance(pacman_x, pacman_y, ghost.grid_x, ghost.grid_y)
-                if distance < 5:  # Danger imminent
-                    score -= (5 - distance) * 100  # Pénalité plus forte quand le fantôme est très proche
-        
-        # Bonus pour être proche des fantômes effrayés
-        for ghost in ghosts:
-            if ghost.frightened and not ghost.eaten:
-                distance = self._manhattan_distance(pacman_x, pacman_y, ghost.grid_x, ghost.grid_y)
-                score += max(0, 10 - distance) * 30  # Bonus pour être proche d'un fantôme effrayé
+ 
         
         return score
     
     def _generate_ghost_move_combinations(self, ghosts, game_map, ghost_home_coords, pacman_x, pacman_y):
         """
-        Génère toutes les combinaisons possibles de mouvements des fantômes.
-        
+        Génère toutes les combinaisons possibles de mouvements des fantômes,
+        en considérant tous les mouvements valides comme aléatoires, peu importe leur état.
+    
         Args:
             ghosts: Liste des fantômes
             game_map: Carte du jeu
             ghost_home_coords: Coordonnées de la maison des fantômes
             pacman_x, pacman_y: Position de Pacman
-        
+    
         Returns:
-            Liste de toutes les combinaisons possibles de mouvements
+            Liste de toutes les combinaisons possibles de mouvements (liste de tuples)
         """
-        # Obtenir les mouvements valides pour chaque fantôme
         ghost_valid_moves = []
-        
+    
         for ghost in ghosts:
-            if ghost.eaten:
-                # Les fantômes mangés suivent un chemin déterministe vers la maison
-                ghost_valid_moves.append([self._get_eaten_ghost_move(ghost, game_map, ghost_home_coords)])
-            elif ghost.frightened:
-                # Les fantômes effrayés se déplacent aléatoirement
-                valid_moves = self._get_ghost_valid_moves(ghost, game_map, ghost_home_coords)
-                ghost_valid_moves.append(valid_moves)
+            valid_moves = self._get_ghost_valid_moves(ghost, game_map, ghost_home_coords)
+            if not valid_moves:
+                ghost_valid_moves.append([None])  # Aucun mouvement possible
             else:
-                # Les fantômes en mode normal (poursuite ou dispersion)
-                if ghost.mode == "SCATTER":
-                    # En mode dispersion, le fantôme se dirige vers son coin
-                    target_x, target_y = self._get_ghost_scatter_target(ghost)
-                    best_move = self._get_best_move_to_target(ghost, target_x, target_y, game_map, ghost_home_coords)
-                    ghost_valid_moves.append([best_move] if best_move else [])
-                else:  # CHASE mode
-                    # En mode poursuite, le fantôme se dirige vers Pacman selon sa personnalité
-                    target_x, target_y = self._get_ghost_chase_target(ghost, pacman_x, pacman_y, ghosts)
-                    best_move = self._get_best_move_to_target(ghost, target_x, target_y, game_map, ghost_home_coords)
-                    ghost_valid_moves.append([best_move] if best_move else [])
-        
-        # Générer toutes les combinaisons
-        # Si trop de combinaisons, limiter à un nombre raisonnable
-        total_combinations = 1
-        for moves in ghost_valid_moves:
-            total_combinations *= max(1, len(moves))
-        
-        if total_combinations > 64:  # Limite arbitraire, à ajuster selon les performances
-            # Option 1: Ne considérer que les fantômes les plus proches
-            # Option 2: Échantillonner aléatoirement quelques combinaisons
-            # Ici, on opte pour l'option 1
-            return self._generate_limited_combinations(ghosts, ghost_valid_moves, pacman_x, pacman_y)
-        
-        # Assurer que chaque liste a au moins un élément (None si vide)
-        for i in range(len(ghost_valid_moves)):
-            if not ghost_valid_moves[i]:
-                ghost_valid_moves[i] = [None]
-        
-        return list(product(*ghost_valid_moves))
+                ghost_valid_moves.append(valid_moves)
+    
+        # Générer le produit cartésien de tous les mouvements possibles
+        List=list(product(*ghost_valid_moves))
+        #print(len(List))
+        return List
     
     def _generate_limited_combinations(self, ghosts, ghost_valid_moves, pacman_x, pacman_y):
         """

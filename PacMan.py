@@ -531,6 +531,7 @@ class Ghost:
         self.draw_priority = self.grid_y * 100 + self.grid_x
     
     def move(self, pacman, ghosts):
+        #print(1)
         self.moving = True
         
         # If eaten, head back to the ghost house
