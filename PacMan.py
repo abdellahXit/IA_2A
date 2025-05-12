@@ -1172,9 +1172,21 @@ def main():
             }
         
             # ✍️ Écris dans un fichier JSON
+            import os
             import json
+
+            results = []
+            if os.path.exists("pacman_result.json"):
+                with open("pacman_result.json", "r") as f:
+                    try:
+                        results = json.load(f)
+                    except json.JSONDecodeError:
+                        results = []
+
+            results.append(result_data)
+
             with open("pacman_result.json", "w") as f:
-                json.dump(result_data, f, indent=4)
+                json.dump(results, f, indent=4)
             pygame.quit()
             sys.exit()
         if game_over or win:
@@ -1193,8 +1205,21 @@ def main():
         
             # ✍️ Écris dans un fichier JSON
             import json
+            import os
+            import json
+
+            results = []
+            if os.path.exists("pacman_result.json"):
+                with open("pacman_result.json", "r") as f:
+                    try:
+                        results = json.load(f)
+                    except json.JSONDecodeError:
+                        results = []
+
+            results.append(result_data)
+
             with open("pacman_result.json", "w") as f:
-                json.dump(result_data, f, indent=4)
+                json.dump(results, f, indent=4)
             if game_over or win:
                 pygame.quit()
                 sys.exit()

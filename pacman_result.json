@@ -1,7 +1,149 @@
-{
-    "score": 3850,
-    "lives": 3,
-    "time": 101.13,
-    "result": "win",
-    "time out": "false"
-}
+[
+    {
+        "score": 3850,
+        "lives": 3,
+        "time": 100.25,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 3450,
+        "lives": 3,
+        "time": 91.83,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 4050,
+        "lives": 2,
+        "time": 98.0,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 4450,
+        "lives": 3,
+        "time": 98.97,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 3450,
+        "lives": 1,
+        "time": 128.37,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 3830,
+        "lives": 0,
+        "time": 98.66,
+        "result": "lose",
+        "time out": "false"
+    },
+    {
+        "score": 3450,
+        "lives": 4,
+        "time": 111.97,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 3570,
+        "lives": 0,
+        "time": 119.0,
+        "result": "lose",
+        "time out": "false"
+    },
+    {
+        "score": 3850,
+        "lives": 4,
+        "time": 124.37,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 3440,
+        "lives": 0,
+        "time": 133.45,
+        "result": "lose",
+        "time out": "false"
+    },
+    {
+        "score": 4250,
+        "lives": 1,
+        "time": 107.67,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 3850,
+        "lives": 3,
+        "time": 71.85,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 3650,
+        "lives": 3,
+        "time": 125.73,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 4850,
+        "lives": 1,
+        "time": 126.84,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 4050,
+        "lives": 2,
+        "time": 79.36,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 3650,
+        "lives": 4,
+        "time": 104.13,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 4010,
+        "lives": 0,
+        "time": 115.91,
+        "result": "lose",
+        "time out": "false"
+    },
+    {
+        "score": 4230,
+        "lives": 0,
+        "time": 99.55,
+        "result": "lose",
+        "time out": "false"
+    },
+    {
+        "score": 4250,
+        "lives": 1,
+        "time": 89.19,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 4650,
+        "lives": 1,
+        "time": 111.48,
+        "result": "win",
+        "time out": "false"
+    },
+    {
+        "score": 3850,
+        "lives": 4,
+        "time": 87.59,
+        "result": "win",
+        "time out": "false"
+    }
+]
