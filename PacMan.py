@@ -1008,6 +1008,9 @@ def main():
                 sys.exit()
             
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_q:
+                    pygame.quit()
+                    sys.exit()
                 if not game_over and not win:
                     if event.key == pygame.K_a:
                         # Toggle AI
