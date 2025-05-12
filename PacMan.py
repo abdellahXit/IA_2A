@@ -1156,7 +1156,48 @@ def main():
             font = pygame.font.SysFont(None, 36)
             restart_text = font.render("Press R to restart", True, WHITE)
             screen.blit(restart_text, (WIDTH//2 - restart_text.get_width()//2, HEIGHT//2 + 36))
+            
+        if pygame.time.get_ticks()/1000==600:
+            # ⏱️ Calcule le temps écoulé
+            time_ms = pygame.time.get_ticks()
+            game_duration_sec = time_ms / 1000
         
+            # 📄 Prépare les données
+            result_data = {
+                "score": pacman.score,
+                "lives": pacman.lives,
+                "time": round(game_duration_sec, 2),
+                "result": "win" if win else "lose",
+                "time out": "true"
+            }
+        
+            # ✍️ Écris dans un fichier JSON
+            import json
+            with open("pacman_result.json", "w") as f:
+                json.dump(result_data, f, indent=4)
+            pygame.quit()
+            sys.exit()
+        if game_over or win:
+            # ⏱️ Calcule le temps écoulé
+            time_ms = pygame.time.get_ticks()
+            game_duration_sec = time_ms / 1000
+        
+            # 📄 Prépare les données
+            result_data = {
+                "score": pacman.score,
+                "lives": pacman.lives,
+                "time": round(game_duration_sec, 2),
+                "result": "win" if win else "lose",
+                "time out": "false"
+            }
+        
+            # ✍️ Écris dans un fichier JSON
+            import json
+            with open("pacman_result.json", "w") as f:
+                json.dump(result_data, f, indent=4)
+            if game_over or win:
+                pygame.quit()
+                sys.exit()
         pygame.display.flip()
         clock.tick(30)
 
